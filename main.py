@@ -8,7 +8,9 @@ shape as log ratios of its hourly count to its own first hour, and the "surge"
 ratio of that first hour to the level of its quiet pre-release day. The
 comparables whose surge ratio sits closest to this case's own share its position
 in the launch, so their median log shape becomes the median forecast and their
-disagreement its spread.
+disagreement its spread. A comparable whose own day peaked far above its first
+hour is ranked last: it had not released in that hour, so its shape is a wait,
+not a launch, and a burst cannot tell it apart from a real one.
 
 Only the standard library is used, and nothing is read from the clock, so two
 runs on one case write the same bytes.
@@ -30,8 +32,9 @@ LEVELS = [0.05, 0.25, 0.5, 0.75, 0.95]
 Z = [-1.645, -0.674, 0.0, 0.674, 1.645]
 NEIGHBOURS = 6          # comparables kept: the closest surge ratios
 SPREAD_SCALE = 0.7      # how much of the neighbours' spread to trust
-SPREAD_FLOOR = 0.15     # never claim a band tighter than this, in log units
+SPREAD_FLOOR = 0.25     # never claim a band tighter than this, in log units
 SPREAD_GROWTH = 0.02    # added per hour the neighbours cannot speak for
+MAX_PEAK = 25.0         # a comparable whose own day peaks higher had not launched yet
 MAX_VIEWERS = 1_000_000_000.0
 
 
@@ -116,7 +119,13 @@ def comparable_shape(comp):
 
 
 def neighbours(case, burst):
-    """The comparables whose launch sits nearest this case's, nearest first."""
+    """The comparables whose launch sits nearest this case's, nearest first.
+
+    A launch whose own day peaks far above its first hour had not released yet in
+    that hour - it unlocked later in the day and its shape is a wait, not a launch.
+    Those are kept last, so a burst cannot drag them in: its count(1) sits close to
+    a quiet pre-release level for the same reason.
+    """
     picked = []
     for comp in case.get("comparables") or []:
         if str(comp.get("name", "")).startswith("Grand Theft Auto VI"):
@@ -128,9 +137,9 @@ def neighbours(case, burst):
         distance = 0.0
         if burst and comp_burst:
             distance = abs(math.log(comp_burst / burst))
-        picked.append((distance, shape))
-    picked.sort(key=lambda item: item[0])
-    return [shape for _, shape in picked]
+        picked.append((max(shape.values()) > MAX_PEAK, distance, shape))
+    picked.sort(key=lambda item: (item[0], item[1]))
+    return [shape for _, _, shape in picked]
 
 
 def hour_band(shapes, hour, carry):

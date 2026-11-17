@@ -38,10 +38,13 @@ counts from 14 days before their own release to 3 days after. For every comparab
   `count(1) / median(quiet hours of the day before)`.
 
 The case's own burst ratio is computed the same way from its own history, and the six comparables
-whose burst ratio sits closest to it are the ones that share its position in the launch. Their
-median log shape is the median forecast; their disagreement is the width of the band, scaled by
-0.7 and floored at 0.15 nats so the band can never claim more certainty than a launch day has.
-Quantiles are `p1 * exp(median + z_tau * spread)` with `z = -1.645, -0.674, 0, 0.674, 1.645`.
+whose burst ratio sits closest to it are the ones that share its position in the launch. A comparable
+whose own release day peaks far above its first hour is ranked last: it had not released in that
+hour, so its shape is a wait rather than a launch, and its burst ratio cannot tell it apart from a
+real one. Their median log shape is the median forecast; their disagreement is the width of the
+band, scaled by 0.7 and floored at 0.25 nats so the band can never claim more certainty than a
+launch day has. Quantiles are `p1 * exp(median + z_tau * spread)` with `z = -1.645, -0.674, 0,
+0.674, 1.645`.
 
 ## What it scores
 
@@ -53,7 +56,15 @@ using their hourly counts from SullyGnome for the practice scoring:
 | --- | --- | --- | --- |
 | house baseline (persistence at hour 1) | 0.3378 | 69.8% | 0.783 |
 | comparables' median shape, their own spread | 0.3838 | 41.5% | 1.000 |
-| this entry: six nearest-burst comparables, 0.7 spread | 0.1761 | 29.3% | 0.826 |
+| six nearest-burst comparables, no peak screen | 0.1761 | 29.3% | 0.826 |
+| this entry (peak screen, floor 0.25) | 0.1695 | 31.0% | 0.848 |
+
+The peak screen is worth more than the four practice launches can show, because a case whose first
+hour already carries a launch is rare among them. Scoring each of the 26 comparables in turn as a
+case, predicted from the other 37, gives 0.460 without the screen and 0.328 with it - and it is what
+stops a case whose release-day first hour is far above its quiet pre-release level (GTA VI itself
+sits that way: its own category ran at about 2,000 viewers before release) from borrowing the shape
+of a launch that unlocked at 14:00Z and peaked 2,000x its own first hour.
 
 The practice answers are close to, not identical with, the stored ones the site grades against: the
 live hourly series drifts a few percent from the snapshot the kit's case files were cut from, so the
